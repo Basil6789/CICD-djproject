@@ -37,7 +37,7 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name == 'push' }}
           tags: |
-            basil6789/djapp:latest
-            basil6789/djapp:${{ github.sha }}
-        env:
-          DOCKER_BUILDKIT: 1
+            basil6789/djapp:555
+          
+ 
+       
