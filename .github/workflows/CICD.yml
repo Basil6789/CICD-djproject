@@ -12,7 +12,7 @@ on:
       - main
 
 jobs:
-  build:
+  prepare:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
 
@@ -26,9 +26,13 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PAT }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: basil6789/djapp:latest
+   build:
+       needs: prepare
+       steps:
+           - name: Build and push Docker image
+             uses: docker/build-push-action@v6
+             with:
+               context: .
+               file: ./Dockerfile
+               push: true
+               tags: 555
