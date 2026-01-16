@@ -13,9 +13,8 @@ on:
 
 jobs:
   prepare:
-    name: Build & Push Docker Image
+    name: Login to Docker Hub
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,13 +25,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PAT }}
 
-   build:
-       needs: prepare
-       steps:
-           - name: Build and push Docker image
-             uses: docker/build-push-action@v6
-             with:
-               context: .
-               file: ./Dockerfile
-               push: true
-               tags: 555
+  build:
+    needs: prepare
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: basil6789/djapp:latest
