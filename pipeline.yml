@@ -1,0 +1,84 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  tag: $(Build.BuildId)
+  imageName: djangoapp
+
+stages:
+# -------------------------
+# Stage 1: Build & Package
+# -------------------------
+- stage: AppBuild
+  displayName: "Package Django App"
+  jobs:
+    - job: PackageApp
+      pool:
+        name: agents
+      steps:
+        - checkout: self
+
+        - script: |
+           mkdir -p "$(Build.ArtifactStagingDirectory)/app"
+           cp -r . "$(Build.ArtifactStagingDirectory)/app/"
+          displayName: "Copy Django app to artifact"
+
+
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: '$(Build.ArtifactStagingDirectory)/app'
+            artifact: 'app-package'
+            publishLocation: 'pipeline'
+          displayName: "Publish app artifact"
+
+# -------------------------
+# Stage 2: Docker Build
+# -------------------------
+- stage: DockerBuild
+  displayName: "Build Docker Image"
+  dependsOn: AppBuild
+  jobs:
+    - job: DockerImage
+      pool:
+        name: agents
+      steps:
+        - checkout: self
+
+        - task: DownloadPipelineArtifact@2
+          inputs:
+            artifact: 'app-package'
+            path: '$(Pipeline.Workspace)/app-package'
+          displayName: "Download app artifact"
+
+
+        - task: Docker@2
+          displayName: "Build Docker Image"
+          inputs:
+            command: build
+            repository: $(imageName)
+            dockerfile: $(Build.SourcesDirectory)/Dockerfile
+            buildContext: $(Pipeline.Workspace)/app-package
+            tags: |
+              $(tag)
+
+# -------------------------
+# Stage 3: Deploy
+# -------------------------
+- stage: Deploy
+  displayName: "Run Django Container on VM"
+  dependsOn: DockerBuild
+  jobs:
+    - job: RunContainer
+      pool:
+        name: agents
+      steps:
+        - script: |
+           echo "Stopping old container if running..."
+           docker rm -f djangoapp || true
+           echo "Starting new container..."
+           docker run -d --restart unless-stopped -p 80:3000 --name djangoapp $(imageName):$(tag)
+      displayName: "Deploy container on VM"
+

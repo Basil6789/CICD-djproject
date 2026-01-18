@@ -1,9 +1,11 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine
 
-WORKDIR /app
+WORKDIR /home/python/app
 
-COPY requirements.txt .
+COPY requirements.txt ./
+
+RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "manage.py"]
+CMD ["python", "app.py"]
