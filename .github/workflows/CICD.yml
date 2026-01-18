@@ -130,6 +130,7 @@ jobs:
           tags: basil6789/djapp:latest
 
   Build_and_push:
+    needs: build
     name: Build and push to ECR
     runs-on: ubuntu-latest
     steps:
@@ -141,6 +142,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID}}
           aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          aws-region: us-east-1
 
       - name: login to Amazon ECR
         id: login-ecr
@@ -149,7 +151,7 @@ jobs:
       - name: Build, Tag, and Push the Image to Amazon ECR
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry}}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: djangoapp
           IMAGE_TAG: latest
         run: |
