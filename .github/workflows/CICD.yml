@@ -21,7 +21,8 @@ jobs:
 
       - name: Set version and image tag
         run: |
-          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+          BRANCH_NAME=${GITHUB_REF_NAME##*/}
+          if [ "$BRANCH_NAME" == "main" ]; then
             VERSION="1.0.0"
             IMAGE_TAG="version"
           else
@@ -103,7 +104,8 @@ jobs:
         run: |
           VERSION=$(grep 'version:' version.yaml | cut -d'"' -f2)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          if [ "${GITHUB_REF_NAME}" == "main" ]; then
+          BRANCH_NAME=${GITHUB_REF_NAME##*/}
+          if [ "$BRANCH_NAME" == "main" ]; then
             IMAGE_TAG="version"
           else
             IMAGE_TAG="devimages"
@@ -182,14 +184,23 @@ jobs:
           username: ${{ secrets.HOST_NAME }}
           key: ${{ secrets.KEY }}
           script: |
-            if [ "${GITHUB_REF_NAME}" == "main" ]; then
+            BRANCH_NAME=${GITHUB_REF_NAME##*/}
+            if [ "$BRANCH_NAME" == "main" ]; then
               PORT=80
               IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:version
             else
               PORT=4000
               IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:devimages
             fi
+
+            echo "Stopping old container (if exists)..."
             docker stop djapp || true
             docker rm djapp || true
+
+            echo "Pulling image $IMAGE..."
             docker pull $IMAGE
+
+            echo "Running container on port $PORT..."
             docker run -d -p $PORT:3000 --name djapp $IMAGE
+
+            
