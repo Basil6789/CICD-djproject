@@ -171,7 +171,6 @@ jobs:
             echo "IMAGE_TAG=version" >> $GITHUB_ENV
           else
             echo "IMAGE_TAG=devimages" >> $GITHUB_ENV
-          fi
 
       - name: Build, Tag, and Push the Image to Amazon ECR
         env:
@@ -196,23 +195,20 @@ jobs:
           username: ${{ secrets.DOCKER_UNAME }}
           password: ${{ secrets.DOCKER_PAT }}
 
-      - name: Pull latest dev image
+      - name: Pull latest main image
         run: |
-          echo "Pulling latest dev image..."
-          docker pull ${{ secrets.DOCKER_UNAME }}/djapp:devimages
+          echo "Pulling latest main image..."
+          docker pull ${{ secrets.DOCKER_UNAME }}/djapp:version
 
       - name: Tag image for release
         run: |
-          echo "Tagging image as version..."
-          docker tag ${{ secrets.DOCKER_UNAME }}/djapp:devimages ${{ secrets.DOCKER_UNAME }}/djapp:version
+          echo "Tagging image as release..."
+          docker tag ${{ secrets.DOCKER_UNAME }}/djapp:version ${{ secrets.DOCKER_UNAME }}/djapp:release
 
       - name: Push promoted image
         run: |
-          echo "Pushing promoted image..."
-          docker push ${{ secrets.DOCKER_UNAME }}/djapp:version
-
-  
-       
+          echo "Pushing promoted release image..."
+          docker push ${{ secrets.DOCKER_UNAME }}/djapp:release
 
   deploy:
     needs: [docker, promote]
