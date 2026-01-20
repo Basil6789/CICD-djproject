@@ -11,6 +11,7 @@ on:
     branches:
       - dev
       - main
+  workflow_dispatch:  # to allow manual promote if needed
 
 jobs:
   prepare:
@@ -178,8 +179,44 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-  deploy:
+  promote:
     needs: docker
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_UNAME }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Pull latest dev image
+        run: |
+          echo "Pulling latest dev image..."
+          docker pull ${{ secrets.DOCKER_UNAME }}/djapp:devimages
+
+      - name: Tag image for release
+        run: |
+          echo "Tagging image as version..."
+          docker tag ${{ secrets.DOCKER_UNAME }}/djapp:devimages ${{ secrets.DOCKER_UNAME }}/djapp:version
+
+      - name: Push promoted image
+        run: |
+          echo "Pushing promoted image..."
+          docker push ${{ secrets.DOCKER_UNAME }}/djapp:version
+
+      - name: Optional: Promote to ECR
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          ECR_REPOSITORY: djangoapp
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker pull ${{ secrets.DOCKER_UNAME }}/djapp:devimages
+          docker tag ${{ secrets.DOCKER_UNAME }}/djapp:devimages $ECR_REGISTRY/$ECR_REPOSITORY:version
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:version
+
+  deploy:
+    needs: [docker, promote]  # deploy waits for promotion
     runs-on: ubuntu-latest
     steps:
       - name: SSH to the server
@@ -189,7 +226,21 @@ jobs:
           username: ${{ secrets.HOST_NAME }}
           key: ${{ secrets.KEY }}
           script: |
+            BRANCH_NAME=${GITHUB_REF##*/}
+            if [ "$BRANCH_NAME" == "main" ]; then
+              PORT=80
+              IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:version
+            else
+              PORT=4000
+              IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:devimages
+            fi
+
+            echo "Stopping old container (if exists)..."
             docker stop djapp || true
             docker rm djapp || true
-            docker pull ${{ secrets.DOCKER_UNAME }}/djapp:latest
-            docker run -d -p 81:3000 --name djapp ${{ secrets.DOCKER_UNAME }}/djapp:latest
+
+            echo "Pulling image $IMAGE..."
+            docker pull $IMAGE
+
+            echo "Running container on port $PORT..."
+            docker run -d -p $PORT:3000 --name djapp $IMAGE
