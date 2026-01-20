@@ -189,21 +189,7 @@ jobs:
           username: ${{ secrets.HOST_NAME }}
           key: ${{ secrets.KEY }}
           script: |
-            BRANCH_NAME=${GITHUB_REF##*/}
-            if [ "$BRANCH_NAME" == "main" ]; then
-              PORT=80
-              IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:version
-            else
-              PORT=4000
-              IMAGE=${{ secrets.DOCKER_UNAME }}/djapp:devimages
-            fi
-
-            echo "Stopping old container (if exists)..."
             docker stop djapp || true
             docker rm djapp || true
-
-            echo "Pulling image $IMAGE..."
-            docker pull $IMAGE
-
-            echo "Running container on port $PORT..."
-            docker run -d -p $PORT:3000 --name djapp $IMAGE
+            docker pull ${{ secrets.DOCKER_UNAME }}/djapp:latest
+            docker run -d -p 81:3000 --name djapp ${{ secrets.DOCKER_UNAME }}/djapp:latest
